@@ -1,13 +1,18 @@
 import os
 import torch
+import json
 import torch.nn as nn
-from torchvision import datasets, transforms
 from torch.utils.data import random_split, DataLoader
+from torchvision import datasets, transforms
 from training.model import MNISTClassifier
+from evaluation.plot import plot_curves
 
 BATCH_SIZE = 64 
 EPOCHS = 10
 LR = 0.001
+
+train_losses, train_accs = [], []
+val_losses,   val_accs   = [], []
 
 transform = transforms.Compose([
     transforms.ToTensor(),
@@ -30,7 +35,7 @@ val_loader   = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
 model = MNISTClassifier()
 criterion = nn.CrossEntropyLoss()
-optimizer = torch.optim.Adam(model.parameters(), lr=LR)
+optimizer = torch.optim.SGD(model.parameters(), lr=LR, momentum=0.9)
 
 def train_one_epoch(epoch):
     model.train()
@@ -48,8 +53,9 @@ def train_one_epoch(epoch):
     acc = correct / len(train_dataset)
     avg_loss = total_loss / len(train_loader)
     print(f"Epoch {epoch} | Train Loss: {avg_loss:.4f} | Train Acc: {acc:.4f}")
+    train_losses.append(avg_loss)
+    train_accs.append(acc)
     return avg_loss, acc
-
 
 def validate(epoch):
     model.eval()
@@ -67,6 +73,8 @@ def validate(epoch):
         avg_loss = total_loss / len(val_dataset)
 
         print(f"Epoch {epoch} |   Val Loss: {avg_loss:.4f} |   Val Acc: {acc:.4f}")
+        val_losses.append(avg_loss)
+        val_accs.append(acc)
         return avg_loss, acc
     
 def save_model(epoch, val_acc, prev_path=None):
@@ -85,13 +93,29 @@ if __name__ == "__main__":
     best_val_acc = 0.0
     best_model_path = None
 
-    for epoch in range(1,EPOCHS+1):
+    for epoch in range(1, EPOCHS + 1):
         train_loss, train_acc = train_one_epoch(epoch)
-        val_loss, val_acc = validate(epoch)
+        val_loss, val_acc     = validate(epoch)
 
         if val_acc > best_val_acc:
             best_val_acc = val_acc
             best_model_path = save_model(epoch, val_acc, best_model_path)
 
+        print("_" * 55)
+
+    plot_curves(train_losses, val_losses, train_accs, val_accs, optimizer_name="SGD")
     print(f"\n✅ Best model: {best_model_path} | Val Acc: {best_val_acc:.4f}")
 
+    # ✅ inside __main__
+    os.makedirs("evaluation", exist_ok=True)
+    metrics = {
+        "train_losses": train_losses,
+        "val_losses":   val_losses,
+        "train_accs":   train_accs,
+        "val_accs":     val_accs
+    }
+    optimizer_name = optimizer.__class__.__name__
+    metrics_path = f"evaluation/metrics/metrics_{optimizer_name}.json"
+    with open(metrics_path, "w") as f:
+        json.dump(metrics, f)
+    print(f"Metrics saved → {metrics_path}")
