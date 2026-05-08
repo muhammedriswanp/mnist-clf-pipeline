@@ -28,7 +28,7 @@ full_dataset = datasets.MNIST(
 
 train_size = int(0.8 * len(full_dataset))
 val_size   = len(full_dataset) - train_size
-train_dataset, val_dataset = random_split(full_dataset, [train_size, val_size], generator=torch.Generator().manual_seed(42))
+train_dataset, val_dataset = random_split(full_dataset, [train_size, val_size])
 
 train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
 val_loader   = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
@@ -36,6 +36,9 @@ val_loader   = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
 model = MNISTClassifier()
 criterion = nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=LR)
+
+optimizer_name = optimizer.__class__.__name__
+
 
 def train_one_epoch(epoch):
     model.train()
@@ -84,7 +87,7 @@ def save_model(epoch, val_acc, prev_path=None):
         os.remove(prev_path)
         print(f"Deleted old model → {prev_path}")
     
-    path = f"models/mnist_model_epoch{epoch}_valacc{val_acc:.4f}.pth"
+    path = f"models/mnist_model_optim{optimizer_name}_epoch{epoch}_valacc{val_acc:.4f}.pth"
     torch.save(model.state_dict(), path)
     print(f"Model saved → {path}")
     return path
@@ -103,17 +106,16 @@ if __name__ == "__main__":
 
         print("_" * 55)
 
-    plot_curves(train_losses, val_losses, train_accs, val_accs, optimizer_name="Adam")
+    plot_curves(train_losses, val_losses, train_accs, val_accs, optimizer_name=optimizer_name)
     print(f"\nBest model: {best_model_path} | Val Acc: {best_val_acc:.4f}")
 
-    os.makedirs("evaluation", exist_ok=True)
+    os.makedirs("evaluation/metrics", exist_ok=True)
     metrics = {
         "train_losses": train_losses,
         "val_losses":   val_losses,
         "train_accs":   train_accs,
         "val_accs":     val_accs
     }
-    optimizer_name = optimizer.__class__.__name__
     metrics_path = f"evaluation/metrics/metrics_{optimizer_name}.json"
     with open(metrics_path, "w") as f:
         json.dump(metrics, f)
