@@ -13,6 +13,7 @@ def plot_curves(train_losses, val_losses, train_accs, val_accs, optimizer_name):
     ax1.set_title(f"Loss Curve ({optimizer_name})")
     ax1.set_xlabel("Epoch")
     ax1.set_ylabel("Loss")
+    ax1.grid()
     ax1.legend()
 
     # Accuracy curve
@@ -21,6 +22,7 @@ def plot_curves(train_losses, val_losses, train_accs, val_accs, optimizer_name):
     ax2.set_title(f"Accuracy Curve ({optimizer_name})")
     ax2.set_xlabel("Epoch")
     ax2.set_ylabel("Accuracy")
+    ax2.grid()
     ax2.legend()
 
     plt.tight_layout()

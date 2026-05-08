@@ -28,14 +28,14 @@ full_dataset = datasets.MNIST(
 
 train_size = int(0.8 * len(full_dataset))
 val_size   = len(full_dataset) - train_size
-train_dataset, val_dataset = random_split(full_dataset, [train_size, val_size])
+train_dataset, val_dataset = random_split(full_dataset, [train_size, val_size], generator=torch.Generator().manual_seed(42))
 
 train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
 val_loader   = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
 model = MNISTClassifier()
 criterion = nn.CrossEntropyLoss()
-optimizer = torch.optim.SGD(model.parameters(), lr=LR, momentum=0.9)
+optimizer = torch.optim.Adam(model.parameters(), lr=LR)
 
 def train_one_epoch(epoch):
     model.train()
@@ -103,10 +103,9 @@ if __name__ == "__main__":
 
         print("_" * 55)
 
-    plot_curves(train_losses, val_losses, train_accs, val_accs, optimizer_name="SGD")
-    print(f"\n✅ Best model: {best_model_path} | Val Acc: {best_val_acc:.4f}")
+    plot_curves(train_losses, val_losses, train_accs, val_accs, optimizer_name="Adam")
+    print(f"\nBest model: {best_model_path} | Val Acc: {best_val_acc:.4f}")
 
-    # ✅ inside __main__
     os.makedirs("evaluation", exist_ok=True)
     metrics = {
         "train_losses": train_losses,
