@@ -1,6 +1,8 @@
 import os
 import torch
 import json
+import mlflow
+import mlflow.pytorch
 import torch.nn as nn
 from torch.utils.data import random_split, DataLoader
 from torchvision import datasets, transforms
@@ -35,8 +37,7 @@ val_loader   = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
 model = MNISTClassifier()
 criterion = nn.CrossEntropyLoss()
-optimizer = torch.optim.Adam(model.parameters(), lr=LR)
-
+optimizer = torch.optim.SGD(model.parameters(), lr=LR, momentum=0.9)
 optimizer_name = optimizer.__class__.__name__
 
 
@@ -50,6 +51,7 @@ def train_one_epoch(epoch):
         loss = criterion(outputs, labels)
         loss.backward()
         optimizer.step()
+
         total_loss += loss.item()
         correct    += (outputs.argmax(1) == labels).sum().item()
 
@@ -73,7 +75,7 @@ def validate(epoch):
             correct    += (outputs.argmax(1) == labels).sum().item()
 
         acc = correct / len(val_dataset)
-        avg_loss = total_loss / len(val_dataset)
+        avg_loss = total_loss / len(val_loader)
 
         print(f"Epoch {epoch} |   Val Loss: {avg_loss:.4f} |   Val Acc: {acc:.4f}")
         val_losses.append(avg_loss)
@@ -93,30 +95,64 @@ def save_model(epoch, val_acc, prev_path=None):
     return path
         
 if __name__ == "__main__":
-    best_val_acc = 0.0
-    best_model_path = None
 
-    for epoch in range(1, EPOCHS + 1):
-        train_loss, train_acc = train_one_epoch(epoch)
-        val_loss, val_acc     = validate(epoch)
+    mlflow.set_experiment("mnist-clf")
 
-        if val_acc > best_val_acc:
-            best_val_acc = val_acc
-            best_model_path = save_model(epoch, val_acc, best_model_path)
+    with mlflow.start_run(run_name=optimizer_name):
 
-        print("_" * 55)
+        mlflow.log_params({
+            "optimizer":  optimizer_name,
+            "lr":         LR,
+            "batch_size": BATCH_SIZE,
+            "epochs":     EPOCHS,
+            "train_size": train_size,
+            "val_size":   val_size,
+        })
 
-    plot_curves(train_losses, val_losses, train_accs, val_accs, optimizer_name=optimizer_name)
-    print(f"\nBest model: {best_model_path} | Val Acc: {best_val_acc:.4f}")
 
-    os.makedirs("evaluation/metrics", exist_ok=True)
-    metrics = {
-        "train_losses": train_losses,
-        "val_losses":   val_losses,
-        "train_accs":   train_accs,
-        "val_accs":     val_accs
-    }
-    metrics_path = f"evaluation/metrics/metrics_{optimizer_name}.json"
-    with open(metrics_path, "w") as f:
-        json.dump(metrics, f)
-    print(f"Metrics saved → {metrics_path}")
+        best_val_acc = 0.0
+        best_model_path = None
+
+        for epoch in range(1, EPOCHS + 1):
+            train_loss, train_acc = train_one_epoch(epoch)
+            val_loss, val_acc     = validate(epoch)
+
+            mlflow.log_metrics({
+                "train_loss": train_loss,
+                    "train_acc":  train_acc,
+                    "val_loss":   val_loss,
+                    "val_acc":    val_acc,
+            }, step=epoch)
+
+            if val_acc > best_val_acc:
+                best_val_acc = val_acc
+                best_model_path = save_model(epoch, val_acc, best_model_path)
+
+            print("_" * 55)
+
+        plot_curves(train_losses, val_losses, train_accs, val_accs, optimizer_name=optimizer_name)
+        print(f"\nBest model: {best_model_path} | Val Acc: {best_val_acc:.4f}")
+
+        os.makedirs("evaluation/metrics", exist_ok=True)
+        metrics = {
+            "train_losses": train_losses,
+            "val_losses":   val_losses,
+            "train_accs":   train_accs,
+            "val_accs":     val_accs
+        }
+        metrics_path = f"evaluation/metrics/metrics_{optimizer_name}.json"
+        with open(metrics_path, "w") as f:
+            json.dump(metrics, f)
+        print(f"Metrics saved → {metrics_path}")
+
+        plot_path = f"evaluation/plots/{optimizer_name}_curves.png"
+        if os.path.exists(plot_path):
+            mlflow.log_artifact(plot_path, artifact_path="plots")
+        mlflow.log_artifact(metrics_path, artifact_path="metrics")
+        mlflow.log_artifact(best_model_path, artifact_path="models")
+
+        mlflow.log_metric("best_val_acc", best_val_acc)
+
+        print(f"\nBest model : {best_model_path}")
+        print(f"Best val acc: {best_val_acc:.4f}")
+        print(f"MLflow run logged under experiment: mnist-clf")
