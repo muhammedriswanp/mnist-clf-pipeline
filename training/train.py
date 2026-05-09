@@ -2,6 +2,7 @@ import os
 import torch
 import json
 import mlflow
+import yaml
 import mlflow.pytorch
 import torch.nn as nn
 from torch.utils.data import random_split, DataLoader
@@ -9,9 +10,13 @@ from torchvision import datasets, transforms
 from training.model import MNISTClassifier
 from evaluation.plot import plot_curves
 
-BATCH_SIZE = 64 
-EPOCHS = 10
-LR = 0.001
+with open("params.yaml") as f:
+    params = yaml.safe_load(f)
+
+
+BATCH_SIZE = params["train"]["batch_size"]
+EPOCHS     = params["train"]["epochs"]
+LR         = params["train"]["lr"]
 
 train_losses, train_accs = [], []
 val_losses,   val_accs   = [], []
@@ -37,7 +42,7 @@ val_loader   = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
 model = MNISTClassifier()
 criterion = nn.CrossEntropyLoss()
-optimizer = torch.optim.SGD(model.parameters(), lr=LR, momentum=0.9)
+optimizer = torch.optim.Adam(model.parameters(), lr=LR)
 optimizer_name = optimizer.__class__.__name__
 
 

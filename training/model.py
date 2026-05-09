@@ -7,10 +7,12 @@ class MNISTClassifier(nn.Module):
 
         self.network = nn.Sequential(
             nn.Linear(784, 256),
+            nn.BatchNorm1d(256),
             nn.ReLU(),
             nn.Dropout(0.3),
 
             nn.Linear(256,120),
+            nn.BatchNorm1d(120),
             nn.ReLU(),
             nn.Dropout(0.3),
 

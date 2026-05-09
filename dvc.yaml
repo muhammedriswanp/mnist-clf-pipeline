@@ -1,0 +1,19 @@
+stages:
+  train:
+    cmd: python -m training.train
+    deps:
+      - training/train.py
+      - training/model.py
+      - data/
+    params:
+      - train.batch_size
+      - train.epochs
+      - train.lr
+    outs:
+      - models/
+    metrics:
+      - evaluation/metrics/metrics_Adam.json:
+          cache: false
+    plots:
+      - evaluation/plots/Adam_curves.png:
+          cache: false

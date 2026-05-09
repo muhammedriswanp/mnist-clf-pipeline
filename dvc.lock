@@ -1,0 +1,37 @@
+schema: '2.0'
+stages:
+  train:
+    cmd: python -m training.train
+    deps:
+    - path: data/
+      hash: md5
+      md5: ab3353d41bd7a24a20a31f29b64e3b3c.dir
+      size: 66544770
+      nfiles: 8
+    - path: training/model.py
+      hash: md5
+      md5: 196d79a9025b64eeb35cb9601f0ca545
+      size: 533
+    - path: training/train.py
+      hash: md5
+      md5: 53ae6ca83c5c1a32e1d5ee96183b3815
+      size: 5248
+    params:
+      params.yaml:
+        train.batch_size: 64
+        train.epochs: 10
+        train.lr: 0.001
+    outs:
+    - path: evaluation/metrics/metrics_Adam.json
+      hash: md5
+      md5: 45a429beff2d4fe4db41909ff738df29
+      size: 841
+    - path: evaluation/plots/Adam_curves.png
+      hash: md5
+      md5: f2ad60e1c262da3915c2211b2dfd0803
+      size: 49661
+    - path: models/
+      hash: md5
+      md5: 650fc42632fc350aa2c91d808dc5d1de.dir
+      size: 944991
+      nfiles: 1
