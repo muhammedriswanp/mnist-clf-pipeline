@@ -1,66 +1,83 @@
 # mnist-clf-pipeline
 
-A reusable PyTorch training pipeline for MNIST handwritten digit classification.
+A complete PyTorch ANN training pipeline for MNIST digit classification with experiment tracking, data versioning, and containerization.
 
-## Overview
-Trains a neural network classifier on the MNIST dataset using two optimizers (Adam and SGD), with dropout regularization, metric tracking, and model checkpointing.
+---
 
 ## Project Structure
 
 ```
 mnist-clf-pipeline/
-├── data/                   # MNIST dataset (auto-downloaded)
-├── models/                 # Saved model checkpoints
+├── data/                            # MNIST dataset (tracked by DVC)
+├── notebooks/
+│   ├── 01_explore_mnist.ipynb       # Dataset exploration
+│   ├── 02_numpy_forward_prop.ipynb  # Forward propagation from scratch
+│   ├── 03_activation_functions.ipynb
+│   └── 04_compare_lr.ipynb          # Learning rate comparison
 ├── training/
-│   ├── model.py            # Neural network architecture
-│   └── train.py            # Training and validation loops
+│   ├── model.py                     # ANN architecture
+│   └── train.py                     # Training loop + MLflow logging
 ├── evaluation/
-│   ├── plots/              # Loss and accuracy curves
-│   ├── metrics/            # Training metrics (JSON)
-│   └── plot.py             # Plotting functions
-└── configs/                # Configuration files
+│   ├── plot.py                      # Loss/accuracy curves
+│   ├── plots/                       # Saved plots
+│   └── metrics/                     # Saved metrics (JSON)
+├── models/                          # Best model checkpoints
+├── params.yaml                      # Hyperparameters
+├── dvc.yaml                         # DVC pipeline
+├── Dockerfile                       # Docker containerization
+└── requirements-docker.txt          # Docker dependencies
 ```
+
 ---
 
 ## Model Architecture
+
 | Layer | Details |
 |---|---|
-| Input | 784 neurons (28×28 flattened) |
-| Hidden 1 | 256 neurons + ReLU + Dropout(0.3) |
-| Hidden 2 | 120 neurons + ReLU + Dropout(0.3) |
-| Output | 10 neurons (digits 0-9) |
+| Input | 784 (28×28 flattened) |
+| Hidden 1 | Linear(784→256) + BatchNorm + ReLU + Dropout(0.3) |
+| Hidden 2 | Linear(256→120) + BatchNorm + ReLU + Dropout(0.3) |
+| Output | Linear(120→10) |
 
-**Why this architecture?**
-Simple fully connected network — sufficient for MNIST without needing convolutions. Dropout(0.3) added to reduce overfitting.
+---
 
 ## Results
 
-| Optimizer | Final Val Accuracy | Convergence |
+| Optimizer | Val Accuracy | Convergence |
 |---|---|---|
-| Adam | 97.84% | Fast |
-| SGD (momentum=0.9) | 95.73% | Slow |
+| Adam | **98.15%** | Fast |
+| SGD | 95.63% | Slow |
 
-**Adam** converged significantly faster — reaching 95% by epoch 1 vs epoch 6 for SGD.
-**SGD** is still improving at epoch 10, suggesting it needs more epochs to fully converge.
-
-## Observations
-- **No overfitting observed** — train and val accuracy tracked closely throughout
-- **Dropout helped** — regularized the model without hurting accuracy
-- **Adam outperformed SGD** — better suited for this network size and learning rate
+---
 
 ## Run
+
 ```bash
-# Create environment
+# Local
 python -m venv venv
 venv\Scripts\activate
-python -m ensurepip --upgrade
-python -m pip install torch torchvision matplotlib
-
-# Train
+pip install -r requirements.txt
 python -m training.train
+
+# Via DVC pipeline
+dvc repro
+
+# Via Docker
+docker build -t mnist-clf .
+docker run mnist-clf
 ```
 
-## Output
-- Best model saved to `models/`
-- Loss/accuracy curves saved to `evaluation/plots/`
-- Training metrics saved to `evaluation/metrics/`
+---
+
+## Experiment Tracking
+
+```bash
+mlflow ui   # open http://localhost:5000
+```
+
+## Data Versioning
+
+```bash
+dvc pull    # get dataset
+dvc repro   # reproduce experiment
+```
